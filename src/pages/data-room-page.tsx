@@ -10,7 +10,7 @@ import FileDropZone from "@/features/file/components/file-drop-zone";
 import FilePreview from "@/features/file/components/file-preview";
 import NodeList from "@/features/file-system/components/node-list";
 import NodeListSkeleton from "@/features/file-system/components/node-list-skeleton";
-import { useNodes } from "@/features/file-system/hooks";
+import { useMoveNode, useNodes } from "@/features/file-system/hooks";
 import { useFolderPath } from "@/features/folder/hooks";
 import type { FileNode, FolderNode } from "@/types/core";
 import type { SortOption } from "@/types/sort";
@@ -37,6 +37,7 @@ export default function DataRoomPage() {
 	const [sortBy, setSortBy] = useState<SortOption>(null);
 
 	const { data: dataRoom } = useDataRoom(dataRoomId);
+	const { mutate: moveNodeMutate } = useMoveNode();
 	const { data: nodes = [], isLoading } = useNodes({
 		parentId: currentFolderId,
 		dataRoomId: dataRoomId!,
@@ -96,6 +97,13 @@ export default function DataRoomPage() {
 		setPreviewOpen(true);
 	}, []);
 
+	const handleMoveNode = useCallback(
+		(nodeId: string, targetFolderId: string | null) => {
+			moveNodeMutate({ id: nodeId, targetParentId: targetFolderId });
+		},
+		[moveNodeMutate],
+	);
+
 	return (
 		<>
 			<DataRoomHeader
@@ -110,7 +118,6 @@ export default function DataRoomPage() {
 				sortBy={sortBy}
 				onSortChange={handleSortChange}
 			/>
-
 			<FileDropZone
 				parentId={currentFolderId}
 				dataRoomId={dataRoomId!}
@@ -129,6 +136,7 @@ export default function DataRoomPage() {
 								onDeleteClick={handleDeleteFolderClick}
 								onRenameFileClick={handleRenameFileClick}
 								onDeleteFileClick={handleDeleteFileClick}
+								onMoveNode={handleMoveNode}
 							/>
 						)}
 					</div>
