@@ -44,6 +44,8 @@ export interface NodeListProps {
 }
 
 const DRAG_DATA_KEY = "application/x-dataroom-node";
+const DROP_TARGET_ROW_CLASS =
+	"[&>td]:bg-primary/10 [&>td]:border-y [&>td]:border-primary/30";
 
 interface DragPayload {
 	id: string;
@@ -283,9 +285,7 @@ const FolderRow = memo(function FolderRow({
 	return (
 		<TableRow
 			className={`cursor-pointer hover:bg-accent transition-colors ${
-				isDropTarget
-					? "[&>td]:bg-primary/10 [&>td]:shadow-[inset_0_1px_0_0_hsl(var(--primary)/0.30),inset_0_-1px_0_0_hsl(var(--primary)/0.30)]"
-					: ""
+				isDropTarget ? DROP_TARGET_ROW_CLASS : ""
 			}`}
 			draggable
 			onClick={() => {
