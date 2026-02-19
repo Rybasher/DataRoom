@@ -5,6 +5,7 @@ import {
 	DatabaseError,
 	DuplicateNameError,
 	NodeNotFoundError,
+	ValidationError,
 } from "@/lib/errors.ts";
 import type { FileNode, FileSystemNode, FolderNode } from "@/types/core";
 import type { SortOption } from "@/types/sort.ts";
@@ -207,6 +208,93 @@ export async function renameNode(
 			throw error;
 		}
 		throw new DatabaseError(`Failed to rename node ${id}`, error as Error);
+	}
+}
+
+/**
+ * Check whether candidate node is inside ancestor subtree.
+ */
+async function isNodeDescendant(
+	candidateNodeId: string,
+	ancestorNodeId: string,
+): Promise<boolean> {
+	let currentId: string | null = candidateNodeId;
+
+	while (currentId !== null) {
+		if (currentId === ancestorNodeId) {
+			return true;
+		}
+
+		const currentNode = await getNodeById(currentId);
+		currentId = currentNode.parentId;
+	}
+
+	return false;
+}
+
+/**
+ * Move a node to another folder (or root when targetParentId is null)
+ */
+export async function moveNode(
+	id: string,
+	targetParentId: string | null,
+): Promise<FileSystemNode> {
+	try {
+		const node = await getNodeById(id);
+
+		if (targetParentId === id) {
+			throw new ValidationError("Cannot move a node into itself");
+		}
+
+		if (targetParentId !== null) {
+			const targetParent = await getNodeById(targetParentId);
+			if (targetParent.type !== "folder") {
+				throw new ValidationError("Target location must be a folder");
+			}
+
+			if (targetParent.dataRoomId !== node.dataRoomId) {
+				throw new ValidationError("Cannot move nodes across DataRooms");
+			}
+		}
+
+		if (node.parentId === targetParentId) {
+			return node;
+		}
+
+		if (node.type === "folder" && targetParentId !== null) {
+			const movingIntoDescendant = await isNodeDescendant(targetParentId, node.id);
+			if (movingIntoDescendant) {
+				throw new ValidationError("Cannot move a folder into its own descendant");
+			}
+		}
+
+		const exists = await checkNameExists(
+			node.name,
+			targetParentId,
+			node.dataRoomId,
+			node.id,
+		);
+		if (exists) {
+			throw new DuplicateNameError(node.name);
+		}
+
+		const updatedNode: FileSystemNode = {
+			...node,
+			parentId: targetParentId,
+			updatedAt: Date.now(),
+		};
+
+		await db.nodes.put(updatedNode);
+		return updatedNode;
+	} catch (error) {
+		if (
+			error instanceof NodeNotFoundError ||
+			error instanceof DuplicateNameError ||
+			error instanceof ValidationError
+		) {
+			throw error;
+		}
+		throw new DatabaseError(`Failed to move node ${id}`, error as Error);
 	}
 }
 

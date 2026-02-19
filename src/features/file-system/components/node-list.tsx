@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useCallback, useRef, useState } from "react";
 import {
 	FileTextIcon,
 	FolderIcon,
@@ -40,6 +40,31 @@ export interface NodeListProps {
 	onDeleteClick: (folder: FolderNode, e: React.MouseEvent) => void;
 	onRenameFileClick: (file: FileNode, e: React.MouseEvent) => void;
 	onDeleteFileClick: (file: FileNode, e: React.MouseEvent) => void;
+	onMoveNode: (nodeId: string, targetFolderId: string | null) => void;
+}
+
+const DRAG_DATA_KEY = "application/x-dataroom-node";
+
+interface DragPayload {
+	id: string;
+	type: "folder" | "file";
+}
+
+function getDragPayload(e: React.DragEvent): DragPayload | null {
+	const rawPayload = e.dataTransfer.getData(DRAG_DATA_KEY);
+	if (!rawPayload) {
+		return null;
+	}
+
+	try {
+		const parsed = JSON.parse(rawPayload) as DragPayload;
+		if (!parsed.id || (parsed.type !== "folder" && parsed.type !== "file")) {
+			return null;
+		}
+		return parsed;
+	} catch {
+		return null;
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -54,53 +79,170 @@ const NodeList = memo(function NodeList({
 	onDeleteClick,
 	onRenameFileClick,
 	onDeleteFileClick,
+	onMoveNode,
 }: NodeListProps) {
+	const [dragTargetFolderId, setDragTargetFolderId] = useState<string | null>(null);
+	const [isDraggingNode, setIsDraggingNode] = useState(false);
+	const [isRootDragTarget, setIsRootDragTarget] = useState(false);
+	const suppressClickRef = useRef(false);
+
+	const handleNodeDragStart = useCallback((e: React.DragEvent, node: FileSystemNode) => {
+		setIsDraggingNode(true);
+		suppressClickRef.current = true;
+		e.dataTransfer.effectAllowed = "move";
+		e.dataTransfer.setData("text/plain", node.id);
+		e.dataTransfer.setData(
+			DRAG_DATA_KEY,
+			JSON.stringify({
+				id: node.id,
+				type: node.type,
+			}),
+		);
+	}, []);
+
+	const handleNodeDragEnd = useCallback(() => {
+		setIsDraggingNode(false);
+		setDragTargetFolderId(null);
+		setIsRootDragTarget(false);
+		window.setTimeout(() => {
+			suppressClickRef.current = false;
+		}, 0);
+	}, []);
+
+	const handleFolderDragOver = useCallback(
+		(e: React.DragEvent, folderId: string) => {
+			const payload = getDragPayload(e);
+			if (!payload || payload.id === folderId) {
+				return;
+			}
+
+			e.preventDefault();
+			e.stopPropagation();
+			e.dataTransfer.dropEffect = "move";
+			setDragTargetFolderId(folderId);
+			setIsRootDragTarget(false);
+		},
+		[],
+	);
+
+	const handleFolderDrop = useCallback(
+		(e: React.DragEvent, folderId: string) => {
+			e.preventDefault();
+			e.stopPropagation();
+
+			const payload = getDragPayload(e);
+			setDragTargetFolderId(null);
+			setIsRootDragTarget(false);
+
+			if (!payload) {
+				return;
+			}
+
+			onMoveNode(payload.id, folderId);
+		},
+		[onMoveNode],
+	);
+
+	const handleRootDragOver = useCallback((e: React.DragEvent) => {
+		const payload = getDragPayload(e);
+		if (!payload) {
+			return;
+		}
+
+		e.preventDefault();
+		e.dataTransfer.dropEffect = "move";
+		setDragTargetFolderId(null);
+		setIsRootDragTarget(true);
+	}, []);
+
+	const handleRootDrop = useCallback(
+		(e: React.DragEvent) => {
+			e.preventDefault();
+
+			const payload = getDragPayload(e);
+			setDragTargetFolderId(null);
+			setIsRootDragTarget(false);
+
+			if (!payload) {
+				return;
+			}
+
+			onMoveNode(payload.id, null);
+		},
+		[onMoveNode],
+	);
+
 	if (nodes.length === 0) {
 		return (
-			<div className="flex flex-col items-center justify-center py-16 text-center">
-				<FolderIcon className="h-16 w-16 text-muted-foreground/50" />
-				<h3 className="mt-4 text-lg font-semibold">No items</h3>
-				<p className="mt-2 text-sm text-muted-foreground">
-					Get started by creating a folder or uploading files
-				</p>
-			</div>
+			<>	
+				<div className="flex flex-col items-center justify-center py-16 text-center">
+					<FolderIcon className="h-16 w-16 text-muted-foreground/50" />
+					<h3 className="mt-4 text-lg font-semibold">No items</h3>
+					<p className="mt-2 text-sm text-muted-foreground">
+						Get started by creating a folder or uploading files
+					</p>
+				</div>
+			</>
+			
 		);
 	}
 
 	return (
-		<Table>
-			<TableHeader>
-				<TableRow>
-					<TableHead className="w-12" />
-					<TableHead className="min-w-[200px]">Name</TableHead>
-					<TableHead>Created</TableHead>
-					<TableHead>Modified</TableHead>
-					<TableHead>Size</TableHead>
-					<TableHead />
-				</TableRow>
-			</TableHeader>
-			<TableBody>
-				{nodes.map((node) =>
-					isFolderNode(node) ? (
-						<FolderRow
-							key={node.id}
-							folder={node}
-							onFolderClick={onFolderClick}
-							onRenameClick={onRenameClick}
-							onDeleteClick={onDeleteClick}
-						/>
-					) : (
-						<FileRow
-							key={node.id}
-							file={node}
-							onFileClick={onFileClick}
-							onRenameClick={onRenameFileClick}
-							onDeleteClick={onDeleteFileClick}
-						/>
-					),
-				)}
-			</TableBody>
-		</Table>
+		<div>
+			<div
+				className={`mb-2 rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground transition-colors ${
+					isDraggingNode ? "opacity-100" : "opacity-0"
+				} ${isRootDragTarget ? "border-primary/40 bg-accent/40" : "border-muted-foreground/20 bg-transparent"}`}
+				onDragOver={handleRootDragOver}
+				onDragLeave={() => setIsRootDragTarget(false)}
+				onDrop={handleRootDrop}
+			>
+				Drop here to move item to root
+			</div>
+			<Table>
+				<TableHeader>
+					<TableRow>
+						<TableHead className="w-12" />
+						<TableHead className="min-w-[200px]">Name</TableHead>
+						<TableHead>Created</TableHead>
+						<TableHead>Modified</TableHead>
+						<TableHead>Size</TableHead>
+						<TableHead />
+					</TableRow>
+				</TableHeader>
+				<TableBody>
+					{nodes.map((node) =>
+						isFolderNode(node) ? (
+							<FolderRow
+								key={node.id}
+								folder={node}
+								onFolderClick={onFolderClick}
+								onRenameClick={onRenameClick}
+								onDeleteClick={onDeleteClick}
+								onNodeDragStart={handleNodeDragStart}
+								onNodeDragEnd={handleNodeDragEnd}
+								onFolderDragOver={handleFolderDragOver}
+								onFolderDrop={handleFolderDrop}
+								isDropTarget={dragTargetFolderId === node.id}
+								isDraggingNode={isDraggingNode}
+								suppressClickRef={suppressClickRef}
+							/>
+						) : (
+							<FileRow
+								key={node.id}
+								file={node}
+								onFileClick={onFileClick}
+								onRenameClick={onRenameFileClick}
+								onDeleteClick={onDeleteFileClick}
+								onNodeDragStart={handleNodeDragStart}
+								onNodeDragEnd={handleNodeDragEnd}
+								suppressClickRef={suppressClickRef}
+							/>
+						),
+					)}
+				</TableBody>
+			</Table>
+		</div>
 	);
 });
 
@@ -116,6 +258,13 @@ interface FolderRowProps {
 	onFolderClick: (id: string) => void;
 	onRenameClick: (folder: FolderNode, e: React.MouseEvent) => void;
 	onDeleteClick: (folder: FolderNode, e: React.MouseEvent) => void;
+	onNodeDragStart: (e: React.DragEvent, node: FileSystemNode) => void;
+	onNodeDragEnd: () => void;
+	onFolderDragOver: (e: React.DragEvent, folderId: string) => void;
+	onFolderDrop: (e: React.DragEvent, folderId: string) => void;
+	isDropTarget: boolean;
+	isDraggingNode: boolean;
+	suppressClickRef: { current: boolean };
 }
 
 const FolderRow = memo(function FolderRow({
@@ -123,18 +272,50 @@ const FolderRow = memo(function FolderRow({
 	onFolderClick,
 	onRenameClick,
 	onDeleteClick,
+	onNodeDragStart,
+	onNodeDragEnd,
+	onFolderDragOver,
+	onFolderDrop,
+	isDropTarget,
+	isDraggingNode,
+	suppressClickRef,
 }: FolderRowProps) {
 	return (
 		<TableRow
-			className="cursor-pointer hover:bg-accent"
-			onClick={() => onFolderClick(folder.id)}
+			className={`cursor-pointer hover:bg-accent transition-colors ${
+				isDropTarget
+					? "[&>td]:bg-primary/10 [&>td]:shadow-[inset_0_1px_0_0_hsl(var(--primary)/0.30),inset_0_-1px_0_0_hsl(var(--primary)/0.30)]"
+					: ""
+			}`}
+			draggable
+			onClick={() => {
+				if (suppressClickRef.current) {
+					return;
+				}
+				onFolderClick(folder.id);
+			}}
+			onDragStart={(e) => onNodeDragStart(e, folder)}
+			onDragEnd={onNodeDragEnd}
+			onDragOver={(e) => onFolderDragOver(e, folder.id)}
+			onDrop={(e) => onFolderDrop(e, folder.id)}
 		>
 			<TableCell>
-				<FolderIcon className="h-5 w-5 text-blue-500" />
+				<FolderIcon
+					className={`h-5 w-5 transition-colors ${
+						isDropTarget ? "text-primary" : "text-blue-500"
+					}`}
+				/>
 			</TableCell>
 			<TableCell className="font-medium">
-				<div className="truncate max-w-[600px]" title={folder.name}>
-					{folder.name}
+				<div className="flex items-center gap-2">
+					<div className="truncate max-w-[600px]" title={folder.name}>
+						{folder.name}
+					</div>
+					{isDraggingNode && isDropTarget && (
+						<span className="text-xs font-medium text-primary">
+							Drop here
+						</span>
+					)}
 				</div>
 			</TableCell>
 			<TableCell className="text-muted-foreground">
@@ -180,11 +361,33 @@ interface FileRowProps {
 	onFileClick: (file: FileNode) => void;
 	onRenameClick: (file: FileNode, e: React.MouseEvent) => void;
 	onDeleteClick: (file: FileNode, e: React.MouseEvent) => void;
+	onNodeDragStart: (e: React.DragEvent, node: FileSystemNode) => void;
+	onNodeDragEnd: () => void;
+	suppressClickRef: { current: boolean };
 }
 
-const FileRow = memo(function FileRow({ file, onFileClick, onRenameClick, onDeleteClick }: FileRowProps) {
+const FileRow = memo(function FileRow({
+	file,
+	onFileClick,
+	onRenameClick,
+	onDeleteClick,
+	onNodeDragStart,
+	onNodeDragEnd,
+	suppressClickRef,
+}: FileRowProps) {
 	return (
-		<TableRow className="cursor-pointer hover:bg-accent" onClick={() => onFileClick(file)}>
+		<TableRow
+			className="cursor-pointer hover:bg-accent"
+			draggable
+			onClick={() => {
+				if (suppressClickRef.current) {
+					return;
+				}
+				onFileClick(file);
+			}}
+			onDragStart={(e) => onNodeDragStart(e, file)}
+			onDragEnd={onNodeDragEnd}
+		>
 			<TableCell>
 				<FileTextIcon className="h-5 w-5 text-red-500" />
 			</TableCell>
