@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -40,6 +41,9 @@ export interface NodeListProps {
 	nodes: FileSystemNode[];
 	sortBy: SortOption;
 	onSortChange: (option: SortOption) => void;
+	selectedIds: Set<string>;
+	onToggleNode: (id: string) => void;
+	onSelectAll: (checked: boolean) => void;
 	onFolderClick: (id: string) => void;
 	onFileClick: (file: FileNode) => void;
 	onRenameClick: (folder: FolderNode, e: React.MouseEvent) => void;
@@ -130,6 +134,9 @@ const NodeList = memo(function NodeList({
 	nodes,
 	sortBy,
 	onSortChange,
+	selectedIds,
+	onToggleNode,
+	onSelectAll,
 	onFolderClick,
 	onFileClick,
 	onRenameClick,
@@ -138,6 +145,14 @@ const NodeList = memo(function NodeList({
 	onDeleteFileClick,
 	onMoveNode,
 }: NodeListProps) {
+	const allSelected =
+		nodes.length > 0 && nodes.every((n) => selectedIds.has(n.id));
+	const someSelected = nodes.some((n) => selectedIds.has(n.id));
+
+	// If any item is selected (including partial), click = deselect all; otherwise select all
+	const handleSelectAllClick = useCallback(() => {
+		onSelectAll(!someSelected);
+	}, [someSelected, onSelectAll]);
 	const [dragTargetFolderId, setDragTargetFolderId] = useState<string | null>(null);
 	const [isDraggingNode, setIsDraggingNode] = useState(false);
 	const [isRootDragTarget, setIsRootDragTarget] = useState(false);
@@ -259,6 +274,16 @@ const NodeList = memo(function NodeList({
 			<Table>
 				<TableHeader>
 					<TableRow>
+						<TableHead className="w-10 pr-0">
+							<Checkbox
+								aria-label="Select all"
+								checked={
+									allSelected ? true : someSelected ? "indeterminate" : false
+								}
+								onCheckedChange={handleSelectAllClick}
+								onClick={(e) => e.stopPropagation()}
+							/>
+						</TableHead>
 						<TableHead className="w-12" />
 						<SortableHead
 							label="Name"
@@ -293,6 +318,8 @@ const NodeList = memo(function NodeList({
 							<FolderRow
 								key={node.id}
 								folder={node}
+								selected={selectedIds.has(node.id)}
+								onToggleSelect={() => onToggleNode(node.id)}
 								onFolderClick={onFolderClick}
 								onRenameClick={onRenameClick}
 								onDeleteClick={onDeleteClick}
@@ -308,6 +335,8 @@ const NodeList = memo(function NodeList({
 							<FileRow
 								key={node.id}
 								file={node}
+								selected={selectedIds.has(node.id)}
+								onToggleSelect={() => onToggleNode(node.id)}
 								onFileClick={onFileClick}
 								onRenameClick={onRenameFileClick}
 								onDeleteClick={onDeleteFileClick}
@@ -332,6 +361,8 @@ export default NodeList;
 
 interface FolderRowProps {
 	folder: FolderNode;
+	selected: boolean;
+	onToggleSelect: () => void;
 	onFolderClick: (id: string) => void;
 	onRenameClick: (folder: FolderNode, e: React.MouseEvent) => void;
 	onDeleteClick: (folder: FolderNode, e: React.MouseEvent) => void;
@@ -346,6 +377,8 @@ interface FolderRowProps {
 
 const FolderRow = memo(function FolderRow({
 	folder,
+	selected,
+	onToggleSelect,
 	onFolderClick,
 	onRenameClick,
 	onDeleteClick,
@@ -361,7 +394,7 @@ const FolderRow = memo(function FolderRow({
 		<TableRow
 			className={`cursor-pointer hover:bg-accent transition-colors ${
 				isDropTarget ? DROP_TARGET_ROW_CLASS : ""
-			}`}
+			} ${selected ? "bg-accent" : ""}`}
 			draggable
 			onClick={() => {
 				if (suppressClickRef.current) {
@@ -374,6 +407,14 @@ const FolderRow = memo(function FolderRow({
 			onDragOver={(e) => onFolderDragOver(e, folder.id)}
 			onDrop={(e) => onFolderDrop(e, folder.id)}
 		>
+			<TableCell className="w-10 pr-0" onClick={(e) => e.stopPropagation()}>
+				<Checkbox
+					aria-label={`Select ${folder.name}`}
+					checked={selected}
+					onCheckedChange={onToggleSelect}
+					onClick={(e) => e.stopPropagation()}
+				/>
+			</TableCell>
 			<TableCell>
 				<FolderIcon
 					className={`h-5 w-5 transition-colors ${
@@ -433,6 +474,8 @@ const FolderRow = memo(function FolderRow({
 
 interface FileRowProps {
 	file: FileNode;
+	selected: boolean;
+	onToggleSelect: () => void;
 	onFileClick: (file: FileNode) => void;
 	onRenameClick: (file: FileNode, e: React.MouseEvent) => void;
 	onDeleteClick: (file: FileNode, e: React.MouseEvent) => void;
@@ -443,6 +486,8 @@ interface FileRowProps {
 
 const FileRow = memo(function FileRow({
 	file,
+	selected,
+	onToggleSelect,
 	onFileClick,
 	onRenameClick,
 	onDeleteClick,
@@ -452,7 +497,7 @@ const FileRow = memo(function FileRow({
 }: FileRowProps) {
 	return (
 		<TableRow
-			className="cursor-pointer hover:bg-accent"
+			className={`cursor-pointer hover:bg-accent ${selected ? "bg-accent" : ""}`}
 			draggable
 			onClick={() => {
 				if (suppressClickRef.current) {
@@ -463,6 +508,14 @@ const FileRow = memo(function FileRow({
 			onDragStart={(e) => onNodeDragStart(e, file)}
 			onDragEnd={onNodeDragEnd}
 		>
+			<TableCell className="w-10 pr-0" onClick={(e) => e.stopPropagation()}>
+				<Checkbox
+					aria-label={`Select ${file.name}`}
+					checked={selected}
+					onCheckedChange={onToggleSelect}
+					onClick={(e) => e.stopPropagation()}
+				/>
+			</TableCell>
 			<TableCell>
 				<FileTextIcon className="h-5 w-5 text-red-500" />
 			</TableCell>

@@ -1,8 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import { Trash2Icon, XIcon } from "lucide-react";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import BulkDeleteNodes from "@/features/data-room/components/bulk-delete-nodes";
 import DataRoomDialogs from "@/features/data-room/components/data-room-dialogs";
 import DataRoomHeader from "@/features/data-room/components/data-room-header";
 import DataRoomToolbar from "@/features/data-room/components/data-room-toolbar";
@@ -35,6 +38,10 @@ export default function DataRoomPage() {
 	const [previewFile, setPreviewFile] = useState<FileNode | null>(null);
 	const [previewOpen, setPreviewOpen] = useState(false);
 
+	// Bulk selection
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+	const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
 	const [sortBy, setSortBy] = useQueryState(
 		"sortBy",
 		parseAsStringLiteral(SORT_OPTIONS),
@@ -48,6 +55,43 @@ export default function DataRoomPage() {
 		sortBy,
 	});
 	const { data: breadcrumbPath = [] } = useFolderPath(currentFolderId);
+
+	const selectedNodes = nodes.filter((n) => selectedIds.has(n.id));
+
+	// Clear selection when navigating to another folder
+	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect
+		setSelectedIds(new Set());
+	}, [currentFolderId]);
+
+	const handleToggleNode = useCallback((id: string) => {
+		setSelectedIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	}, []);
+
+	const handleSelectAll = useCallback((checked: boolean) => {
+		if (checked) {
+			setSelectedIds(new Set(nodes.map((n) => n.id)));
+		} else {
+			setSelectedIds(new Set());
+		}
+	}, [nodes]);
+
+	const handleClearSelection = useCallback(() => {
+		setSelectedIds(new Set());
+	}, []);
+
+	const handleBulkDeleteClick = useCallback(() => {
+		setBulkDeleteOpen(true);
+	}, []);
+
+	const handleBulkDeleted = useCallback(() => {
+		setSelectedIds(new Set());
+	}, []);
 
 	const handleNavigate = useCallback(
 		(folderId: string | null) => {
@@ -131,7 +175,35 @@ export default function DataRoomPage() {
 				className="flex-1 min-h-0"
 			>
 				<ScrollArea className="h-full">
-					<div className="p-6">
+					<div className="p-6 space-y-3">
+						{selectedIds.size > 0 && (
+							<div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/50 px-4 py-2">
+								<span className="text-sm font-medium">
+									{selectedIds.size}{" "}
+									{selectedIds.size === 1 ? "item" : "items"} selected
+								</span>
+								<div className="flex items-center gap-2">
+									<Button
+										variant="destructive"
+										size="sm"
+										onClick={handleBulkDeleteClick}
+										className="gap-1.5"
+									>
+										<Trash2Icon className="h-4 w-4" />
+										Delete
+									</Button>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={handleClearSelection}
+										className="gap-1.5 border-primary/30 text-foreground hover:bg-muted hover:border-primary/50"
+									>
+										<XIcon className="h-4 w-4" />
+										Clear selection
+									</Button>
+								</div>
+							</div>
+						)}
 						{isLoading ? (
 							<NodeListSkeleton />
 						) : (
@@ -139,6 +211,9 @@ export default function DataRoomPage() {
 								nodes={nodes}
 								sortBy={sortBy}
 								onSortChange={handleSortChange}
+								selectedIds={selectedIds}
+								onToggleNode={handleToggleNode}
+								onSelectAll={handleSelectAll}
 								onFolderClick={handleNavigate}
 								onFileClick={handleFileClick}
 								onRenameClick={handleRenameClick}
@@ -163,6 +238,13 @@ export default function DataRoomPage() {
 				deleteFileOpen={deleteFileOpen}
 				onRenameFileOpenChange={setRenameFileOpen}
 				onDeleteFileOpenChange={setDeleteFileOpen}
+			/>
+
+			<BulkDeleteNodes
+				nodes={selectedNodes}
+				open={bulkDeleteOpen}
+				onOpenChange={setBulkDeleteOpen}
+				onDeleted={handleBulkDeleted}
 			/>
 
 			{previewOpen && previewFile && (
