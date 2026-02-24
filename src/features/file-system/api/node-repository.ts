@@ -30,7 +30,19 @@ export async function getChildren(
 				.toArray();
 		}
 
+		const folderSize = -1;
+		const getSize = (n: FileSystemNode) =>
+			n.type === "file" ? n.size : folderSize;
+
 		switch (sortBy) {
+			case "name-asc":
+				return nodes.sort((a, b) =>
+					a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+				);
+			case "name-desc":
+				return nodes.sort((a, b) =>
+					b.name.localeCompare(a.name, undefined, { sensitivity: "base" }),
+				);
 			case "createdAt-asc":
 				return nodes.sort((a, b) => a.createdAt - b.createdAt);
 			case "createdAt-desc":
@@ -39,6 +51,10 @@ export async function getChildren(
 				return nodes.sort((a, b) => a.updatedAt - b.updatedAt);
 			case "updatedAt-desc":
 				return nodes.sort((a, b) => b.updatedAt - a.updatedAt);
+			case "size-asc":
+				return nodes.sort((a, b) => getSize(a) - getSize(b));
+			case "size-desc":
+				return nodes.sort((a, b) => getSize(b) - getSize(a));
 			default:
 				return nodes.sort((a, b) => a.createdAt - b.createdAt);
 		}

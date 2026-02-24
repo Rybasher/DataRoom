@@ -1,5 +1,8 @@
 import { memo, useCallback, useRef, useState } from "react";
 import {
+	ArrowDown,
+	ArrowUp,
+	ArrowUpDown,
 	FileTextIcon,
 	FolderIcon,
 	MoreVerticalIcon,
@@ -27,6 +30,7 @@ import dayjs from "@/lib/dayjs";
 import { formatFileSizeCompact } from "@/lib/utils/formatters";
 import type { FileNode, FileSystemNode, FolderNode } from "@/types/core";
 import { isFolderNode } from "@/types/guards";
+import type { SortOption } from "@/types/sort";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -34,6 +38,8 @@ import { isFolderNode } from "@/types/guards";
 
 export interface NodeListProps {
 	nodes: FileSystemNode[];
+	sortBy: SortOption;
+	onSortChange: (option: SortOption) => void;
 	onFolderClick: (id: string) => void;
 	onFileClick: (file: FileNode) => void;
 	onRenameClick: (folder: FolderNode, e: React.MouseEvent) => void;
@@ -73,8 +79,57 @@ function getDragPayload(e: React.DragEvent): DragPayload | null {
 // NodeList
 // ---------------------------------------------------------------------------
 
+function getNextSort(
+	current: SortOption,
+	column: "name" | "createdAt" | "updatedAt" | "size",
+): SortOption {
+	const asc = `${column}-asc` as SortOption;
+	const desc = `${column}-desc` as SortOption;
+	if (current === asc) return desc;
+	if (current === desc) return null;
+	return asc;
+}
+
+function SortableHead({
+	label,
+	column,
+	sortBy,
+	onSortChange,
+}: {
+	label: string;
+	column: "name" | "createdAt" | "updatedAt" | "size";
+	sortBy: SortOption;
+	onSortChange: (option: SortOption) => void;
+}) {
+	const isActive =
+		sortBy === `${column}-asc` || sortBy === `${column}-desc`;
+	const isAsc = sortBy === `${column}-asc`;
+	return (
+		<TableHead>
+			<button
+				type="button"
+				onClick={() => onSortChange(getNextSort(sortBy, column))}
+				className="flex items-center gap-1.5 font-medium hover:text-foreground text-muted-foreground transition-colors -ml-1 px-1 py-0.5 rounded"
+			>
+				{label}
+				{isActive ? (
+					isAsc ? (
+						<ArrowUp className="h-4 w-4" />
+					) : (
+						<ArrowDown className="h-4 w-4" />
+					)
+				) : (
+					<ArrowUpDown className="h-4 w-4 opacity-50" />
+				)}
+			</button>
+		</TableHead>
+	);
+}
+
 const NodeList = memo(function NodeList({
 	nodes,
+	sortBy,
+	onSortChange,
 	onFolderClick,
 	onFileClick,
 	onRenameClick,
@@ -205,10 +260,30 @@ const NodeList = memo(function NodeList({
 				<TableHeader>
 					<TableRow>
 						<TableHead className="w-12" />
-						<TableHead className="min-w-[200px]">Name</TableHead>
-						<TableHead>Created</TableHead>
-						<TableHead>Modified</TableHead>
-						<TableHead>Size</TableHead>
+						<SortableHead
+							label="Name"
+							column="name"
+							sortBy={sortBy}
+							onSortChange={onSortChange}
+						/>
+						<SortableHead
+							label="Created"
+							column="createdAt"
+							sortBy={sortBy}
+							onSortChange={onSortChange}
+						/>
+						<SortableHead
+							label="Modified"
+							column="updatedAt"
+							sortBy={sortBy}
+							onSortChange={onSortChange}
+						/>
+						<SortableHead
+							label="Size"
+							column="size"
+							sortBy={sortBy}
+							onSortChange={onSortChange}
+						/>
 						<TableHead />
 					</TableRow>
 				</TableHeader>

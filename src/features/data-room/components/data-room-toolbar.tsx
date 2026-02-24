@@ -43,6 +43,32 @@ const DataRoomToolbar = memo(function DataRoomToolbar({
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" className="w-56">
 					<div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+						Sort by Name
+					</div>
+					<DropdownMenuItem
+						onClick={() => onSortChange("name-asc")}
+						className="flex items-center justify-between"
+					>
+						<span className="flex items-center gap-2">
+							<ArrowUp className="h-4 w-4" />
+							A–Z
+						</span>
+						{sortBy === "name-asc" && <Check className="h-4 w-4" />}
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						onClick={() => onSortChange("name-desc")}
+						className="flex items-center justify-between"
+					>
+						<span className="flex items-center gap-2">
+							<ArrowDown className="h-4 w-4" />
+							Z–A
+						</span>
+						{sortBy === "name-desc" && <Check className="h-4 w-4" />}
+					</DropdownMenuItem>
+
+					<DropdownMenuSeparator />
+
+					<div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
 						Sort by Date Created
 					</div>
 					<DropdownMenuItem
@@ -90,6 +116,32 @@ const DataRoomToolbar = memo(function DataRoomToolbar({
 							Oldest first
 						</span>
 						{sortBy === "updatedAt-asc" && <Check className="h-4 w-4" />}
+					</DropdownMenuItem>
+
+					<DropdownMenuSeparator />
+
+					<div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+						Sort by Size
+					</div>
+					<DropdownMenuItem
+						onClick={() => onSortChange("size-asc")}
+						className="flex items-center justify-between"
+					>
+						<span className="flex items-center gap-2">
+							<ArrowUp className="h-4 w-4" />
+							Smallest first
+						</span>
+						{sortBy === "size-asc" && <Check className="h-4 w-4" />}
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						onClick={() => onSortChange("size-desc")}
+						className="flex items-center justify-between"
+					>
+						<span className="flex items-center gap-2">
+							<ArrowDown className="h-4 w-4" />
+							Largest first
+						</span>
+						{sortBy === "size-desc" && <Check className="h-4 w-4" />}
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>

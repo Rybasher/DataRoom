@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import DataRoomDialogs from "@/features/data-room/components/data-room-dialogs";
@@ -13,7 +14,7 @@ import NodeListSkeleton from "@/features/file-system/components/node-list-skelet
 import { useMoveNode, useNodes } from "@/features/file-system/hooks";
 import { useFolderPath } from "@/features/folder/hooks";
 import type { FileNode, FolderNode } from "@/types/core";
-import type { SortOption } from "@/types/sort";
+import { SORT_OPTIONS, type SortOption } from "@/types/sort";
 
 export default function DataRoomPage() {
 	const { dataRoomId } = useParams<{ dataRoomId: string }>();
@@ -34,7 +35,10 @@ export default function DataRoomPage() {
 	const [previewFile, setPreviewFile] = useState<FileNode | null>(null);
 	const [previewOpen, setPreviewOpen] = useState(false);
 
-	const [sortBy, setSortBy] = useState<SortOption>(null);
+	const [sortBy, setSortBy] = useQueryState(
+		"sortBy",
+		parseAsStringLiteral(SORT_OPTIONS),
+	);
 
 	const { data: dataRoom } = useDataRoom(dataRoomId);
 	const { mutate: moveNodeMutate } = useMoveNode();
@@ -52,9 +56,12 @@ export default function DataRoomPage() {
 		[setSearchParams],
 	);
 
-	const handleSortChange = useCallback((option: SortOption) => {
-		setSortBy((prev) => (prev === option ? null : option));
-	}, []);
+	const handleSortChange = useCallback(
+		async (option: SortOption) => {
+			await setSortBy(option === sortBy ? null : option);
+		},
+		[sortBy, setSortBy],
+	);
 
 	const handleRenameClick = useCallback(
 		(folder: FolderNode, e: React.MouseEvent) => {
@@ -130,6 +137,8 @@ export default function DataRoomPage() {
 						) : (
 							<NodeList
 								nodes={nodes}
+								sortBy={sortBy}
+								onSortChange={handleSortChange}
 								onFolderClick={handleNavigate}
 								onFileClick={handleFileClick}
 								onRenameClick={handleRenameClick}
