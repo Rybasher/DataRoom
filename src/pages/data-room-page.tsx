@@ -11,7 +11,6 @@ import DataRoomDialogs from "@/features/data-room/components/data-room-dialogs";
 import DataRoomHeader from "@/features/data-room/components/data-room-header";
 import DataRoomToolbar from "@/features/data-room/components/data-room-toolbar";
 import { useDataRoom } from "@/features/data-room/hooks";
-import FileDropZone from "@/features/file/components/file-drop-zone";
 import FilePreview from "@/features/file/components/file-preview";
 import NodeList from "@/features/file-system/components/node-list";
 import NodeListPagination from "@/features/file-system/components/node-list-pagination";
@@ -210,11 +209,7 @@ export default function DataRoomPage() {
 				sortBy={sortBy}
 				onSortChange={handleSortChange}
 			/>
-			<FileDropZone
-				parentId={currentFolderId}
-				dataRoomId={dataRoomId!}
-				className="flex-1 min-h-0"
-			>
+			<div className="flex-1 min-h-0">
 				<ScrollArea className="h-full">
 					<div className="p-6 space-y-3">
 						{selectedIds.size > 0 && (
@@ -274,7 +269,7 @@ export default function DataRoomPage() {
 						)}
 					</div>
 				</ScrollArea>
-			</FileDropZone>
+			</div>
 
 			<DataRoomDialogs
 				selectedFolder={selectedFolder}

@@ -48,6 +48,44 @@ export async function uploadFile(
 }
 
 /**
+ * Upload a file with a pre-resolved name (used for batch uploads to avoid conflicts).
+ * Skips name conflict resolution since the name is already resolved.
+ */
+export async function uploadFileWithName(
+	file: File,
+	resolvedName: string,
+	parentId: string | null,
+	dataRoomId: string,
+): Promise<FileNode> {
+	// Throws InvalidFileTypeError or FileSizeExceededError if invalid
+	validateFile(file);
+
+	const blobKey = await storeBlob(file);
+
+	try {
+		return await createFile(
+			resolvedName,
+			parentId,
+			dataRoomId,
+			file.type,
+			file.size,
+			blobKey,
+		);
+	} catch (error) {
+		// If node creation fails, clean up the orphaned blob
+		try {
+			const { deleteBlob } = await import(
+				"@/features/file-system/api/blob-repository"
+			);
+			await deleteBlob(blobKey);
+		} catch {
+			// Ignore cleanup errors
+		}
+		throw error;
+	}
+}
+
+/**
  * Rename a file node. Enforces unique name within the same parent folder.
  */
 export async function renameFile(id: string, newName: string): Promise<FileNode> {

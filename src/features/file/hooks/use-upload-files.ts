@@ -1,8 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { uploadFile } from "@/features/file/api/file-repository";
+import { uploadFileWithName } from "@/features/file/api/file-repository";
+import { getChildren } from "@/features/file-system/api/node-repository";
 import { nodeQueries } from "@/features/file-system/queries";
+import { resolveNameConflict } from "@/lib/utils/name-resolver";
 
 interface UploadFilesParams {
 	files: File[];
@@ -15,9 +17,26 @@ export function useUploadFiles() {
 
 	return useMutation({
 		mutationFn: async ({ files, parentId, dataRoomId }: UploadFilesParams) => {
-			// Upload all files concurrently, collect settled results
+			// Get existing files once before resolving conflicts
+			const { nodes: siblings } = await getChildren(parentId, dataRoomId);
+			const existingNames = siblings.map((n) => n.name);
+
+			// Resolve name conflicts for all files, considering both existing files
+			// and other files in the batch
+			const resolvedNames: string[] = [];
+			const filesWithNames = files.map((file) => {
+				// Combine existing names and already resolved names from this batch
+				const allExistingNames = [...existingNames, ...resolvedNames];
+				const resolvedName = resolveNameConflict(file.name, allExistingNames);
+				resolvedNames.push(resolvedName);
+				return { file, resolvedName };
+			});
+
+			// Upload all files concurrently with pre-resolved names
 			const results = await Promise.allSettled(
-				files.map((file) => uploadFile(file, parentId, dataRoomId)),
+				filesWithNames.map(({ file, resolvedName }) =>
+					uploadFileWithName(file, resolvedName, parentId, dataRoomId),
+				),
 			);
 
 			// Single invalidation — nodes table covers both folders and files
