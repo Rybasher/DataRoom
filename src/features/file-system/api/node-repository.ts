@@ -69,7 +69,7 @@ export async function getNodeById(id: string): Promise<FileSystemNode> {
 }
 
 /**
- * Check if a name already exists in the parent folder
+ * Check if a name already exists in the parent folder (case-insensitive)
  */
 export async function checkNameExists(
 	name: string,
@@ -79,8 +79,9 @@ export async function checkNameExists(
 ): Promise<boolean> {
 	try {
 		const children = await getChildren(parentId, dataRoomId);
+		const nameLower = name.toLowerCase();
 		return children.some(
-			(node) => node.name === name && node.id !== excludeId,
+			(node) => node.name.toLowerCase() === nameLower && node.id !== excludeId,
 		);
 	} catch (error) {
 		throw new DatabaseError("Failed to check name existence", error as Error);

@@ -28,9 +28,11 @@ export default function DeleteFile({ file, open, onOpenChange }: DeleteFileProps
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Delete File</DialogTitle>
-					<DialogDescription>
-						Are you sure you want to delete &ldquo;{file.name}&rdquo;? This
-						action cannot be undone.
+					<DialogDescription className="overflow-hidden">
+                        Are you sure you want to delete this file? This action cannot be undone.
+						<span className="font-medium truncate block" title={file.name}>
+                            &ldquo;{file.name}&rdquo;
+						</span>
 					</DialogDescription>
 				</DialogHeader>
 

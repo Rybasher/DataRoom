@@ -13,8 +13,11 @@ export class ValidationError extends DataRoomError {
 }
 
 export class DuplicateNameError extends ValidationError {
-	constructor(name: string) {
-		super(`A file or folder named "${name}" already exists in this location`);
+	constructor(name: string, context?: string) {
+		const message =
+			context ??
+			`A file or folder named "${name}" already exists in this location`;
+		super(message);
 		this.name = "DuplicateNameError";
 	}
 }

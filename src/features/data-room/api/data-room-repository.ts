@@ -1,7 +1,11 @@
 import { v4 as uuidv4 } from "uuid";
 
 import { db } from "@/lib/db";
-import { DatabaseError, DataRoomNotFoundError } from "@/lib/errors.ts";
+import {
+	DatabaseError,
+	DataRoomNotFoundError,
+	DuplicateNameError,
+} from "@/lib/errors.ts";
 import type { DataRoom } from "@/types/core";
 
 /**
@@ -38,10 +42,42 @@ export async function getDataRoomById(id: string): Promise<DataRoom> {
 }
 
 /**
+ * Check if a DataRoom name already exists (case-insensitive)
+ */
+export async function checkDataRoomNameExists(
+	name: string,
+	excludeId?: string,
+): Promise<boolean> {
+	try {
+		const allDataRooms = await db.dataRooms.toArray();
+		const nameLower = name.toLowerCase();
+		return allDataRooms.some(
+			(dataRoom) =>
+				dataRoom.name.toLowerCase() === nameLower &&
+				dataRoom.id !== excludeId,
+		);
+	} catch (error) {
+		throw new DatabaseError(
+			"Failed to check DataRoom name existence",
+			error as Error,
+		);
+	}
+}
+
+/**
  * Create new DataRoom
  */
 export async function createDataRoom(name: string): Promise<DataRoom> {
 	try {
+		// Check for duplicate names (case-insensitive)
+		const exists = await checkDataRoomNameExists(name);
+		if (exists) {
+			throw new DuplicateNameError(
+				name,
+				`A Data Room named "${name}" already exists`,
+			);
+		}
+
 		const now = Date.now();
 		const dataRoom: DataRoom = {
 			id: uuidv4(),
@@ -53,6 +89,9 @@ export async function createDataRoom(name: string): Promise<DataRoom> {
 		await db.dataRooms.add(dataRoom);
 		return dataRoom;
 	} catch (error) {
+		if (error instanceof DuplicateNameError) {
+			throw error;
+		}
 		throw new DatabaseError("Failed to create DataRoom", error as Error);
 	}
 }
@@ -67,6 +106,15 @@ export async function updateDataRoom(
 	try {
 		const dataRoom = await getDataRoomById(id);
 
+		// Check for duplicate names (case-insensitive, excluding current DataRoom)
+		const exists = await checkDataRoomNameExists(name, id);
+		if (exists) {
+			throw new DuplicateNameError(
+				name,
+				`A Data Room named "${name}" already exists`,
+			);
+		}
+
 		const updated: DataRoom = {
 			...dataRoom,
 			name: name.trim(),
@@ -76,7 +124,10 @@ export async function updateDataRoom(
 		await db.dataRooms.put(updated);
 		return updated;
 	} catch (error) {
-		if (error instanceof DataRoomNotFoundError) {
+		if (
+			error instanceof DataRoomNotFoundError ||
+			error instanceof DuplicateNameError
+		) {
 			throw error;
 		}
 		throw new DatabaseError(

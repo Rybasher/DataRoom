@@ -41,10 +41,11 @@ export default function DeleteDataRoom({
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Delete Data Room</DialogTitle>
-					<DialogDescription>
-							Are you sure you want to delete &ldquo;{dataRoom.name}&rdquo;? This action
-							cannot be undone and will delete all files and folders inside this
-							Data Room.
+					<DialogDescription className="overflow-hidden">
+                        Are you sure you want to delete this Data Room?  This action cannot be undone and will delete all files and folders inside this Data Room.
+						<span className="font-medium truncate block" title={dataRoom.name}>
+                            &ldquo;{dataRoom.name}&rdquo;
+						</span>
 					</DialogDescription>
 				</DialogHeader>
 

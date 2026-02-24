@@ -17,8 +17,12 @@ export function resolveNameConflict(
 	desiredName: string,
 	existingNames: string[],
 ): string {
+	// Check for conflict case-insensitively
+	const desiredNameLower = desiredName.toLowerCase();
+	const existingNamesLower = existingNames.map((n) => n.toLowerCase());
+	
 	// If no conflict, return original name
-	if (!existingNames.includes(desiredName)) {
+	if (!existingNamesLower.includes(desiredNameLower)) {
 		return desiredName;
 	}
 
@@ -28,13 +32,13 @@ export function resolveNameConflict(
 	let counter = 1;
 	let newName = "";
 
-	// Keep incrementing counter until we find available name
+	// Keep incrementing counter until we find available name (case-insensitive check)
 	do {
 		newName = extension
 			? `${baseName} (${counter})${extension}`
 			: `${baseName} (${counter})`;
 		counter++;
-	} while (existingNames.includes(newName));
+	} while (existingNamesLower.includes(newName.toLowerCase()));
 
 	return newName;
 }

@@ -71,7 +71,13 @@ export default function DataRoomCard({ dataRoom, isActive = false }: Props) {
 				onClick={handleCardClick}
 			>
 				<CardHeader className="p-4 pr-10">
-					<CardTitle className={cn("text-sm", isActive && "text-primary")}>
+					<CardTitle
+						className={cn(
+							"text-sm truncate",
+							isActive && "text-primary",
+						)}
+						title={dataRoom.name}
+					>
 						{dataRoom.name}
 					</CardTitle>
 					<CardDescription className="text-xs">

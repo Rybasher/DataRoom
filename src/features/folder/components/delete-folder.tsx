@@ -33,10 +33,11 @@ export default function DeleteFolder({
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Delete Folder</DialogTitle>
-					<DialogDescription>
-							Are you sure you want to delete &ldquo;{folder.name}&rdquo;? This
-							action cannot be undone and will delete all files and folders inside
-							this folder.
+					<DialogDescription className="overflow-hidden">
+                        Are you sure you want to delete this folder? This action cannot be undone and will delete all files and folders inside this folder.
+						<span className="font-medium truncate block" title={folder.name}>
+                            &ldquo;{folder.name}&rdquo;
+						</span>
 					</DialogDescription>
 				</DialogHeader>
 
