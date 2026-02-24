@@ -5,7 +5,7 @@ import { parseAsInteger, parseAsStringLiteral, useQueryStates } from "nuqs";
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { DEFAULT_PAGE_SIZE } from "@/constants/pagination";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/constants/pagination";
 import BulkDeleteNodes from "@/features/data-room/components/bulk-delete-nodes";
 import DataRoomDialogs from "@/features/data-room/components/data-room-dialogs";
 import DataRoomHeader from "@/features/data-room/components/data-room-header";
@@ -147,6 +147,19 @@ export default function DataRoomPage() {
 		[total, limit, setQueryStates],
 	);
 
+	const handleLimitChange = useCallback(
+		(nextLimit: number) => {
+			if (!PAGE_SIZE_OPTIONS.includes(nextLimit as (typeof PAGE_SIZE_OPTIONS)[number])) {
+				return;
+			}
+			void setQueryStates({
+				limit: nextLimit,
+				page: 1,
+			});
+		},
+		[setQueryStates],
+	);
+
 	const handleRenameClick = useCallback(
 		(folder: FolderNode, e: React.MouseEvent) => {
 			e.stopPropagation();
@@ -264,6 +277,7 @@ export default function DataRoomPage() {
 									limit={limit}
 									total={total}
 									onPageChange={handlePageChange}
+									onLimitChange={handleLimitChange}
 								/>
 							</>
 						)}

@@ -1,5 +1,6 @@
 import { memo } from "react";
 
+import { Button } from "@/components/ui/button";
 import {
 	Pagination,
 	PaginationContent,
@@ -9,6 +10,7 @@ import {
 	PaginationNext,
 	PaginationPrevious,
 } from "@/components/ui/pagination";
+import { PAGE_SIZE_OPTIONS } from "@/constants/pagination";
 import { totalPages } from "@/lib/utils/pagination";
 
 interface NodeListPaginationProps {
@@ -16,6 +18,7 @@ interface NodeListPaginationProps {
 	limit: number;
 	total: number;
 	onPageChange: (page: number) => void;
+	onLimitChange: (limit: number) => void;
 }
 
 const MAX_VISIBLE = 5;
@@ -25,9 +28,11 @@ function NodeListPagination({
 	limit,
 	total,
 	onPageChange,
+	onLimitChange,
 }: NodeListPaginationProps) {
+	if (total === 0) return null;
+
 	const pages = totalPages(total, limit);
-	if (pages <= 1) return null;
 
 	const prevPage = Math.max(1, page - 1);
 	const nextPage = Math.min(pages, page + 1);
@@ -42,85 +47,108 @@ function NodeListPagination({
 	const showEndEllipsis = end < pages;
 
 	return (
-		<Pagination>
-			<PaginationContent>
-				<PaginationItem>
-					<PaginationPrevious
-						onClick={(e) => {
-							e.preventDefault();
-							onPageChange(prevPage);
-						}}
-						className={
-							page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"
-						}
-					/>
-				</PaginationItem>
+		<div className="flex items-center justify-between gap-6 pt-1">
+			<div className="flex items-center gap-3">
+				<span className="whitespace-nowrap text-sm text-muted-foreground">
+					Items per page:
+				</span>
+				<div className="flex items-center gap-2">
+					{PAGE_SIZE_OPTIONS.map((size) => (
+						<Button
+							key={size}
+							size="sm"
+							variant={size === limit ? "default" : "outline"}
+							className="min-w-10"
+							onClick={() => onLimitChange(size)}
+						>
+							{size}
+						</Button>
+					))}
+				</div>
+			</div>
 
-				{showStartEllipsis && (
-					<>
+			{pages > 1 && (
+				<Pagination>
+					<PaginationContent>
 						<PaginationItem>
-							<PaginationLink
+							<PaginationPrevious
 								onClick={(e) => {
 									e.preventDefault();
-									onPageChange(1);
+									onPageChange(prevPage);
 								}}
-							>
-								1
-							</PaginationLink>
+								className={
+									page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"
+								}
+							/>
 						</PaginationItem>
-						<PaginationItem>
-							<PaginationEllipsis />
-						</PaginationItem>
-					</>
-				)}
 
-				{Array.from({ length: end - start + 1 }, (_, i) => start + i).map(
-					(p) => (
-						<PaginationItem key={p}>
-							<PaginationLink
-								isActive={p === page}
+						{showStartEllipsis && (
+							<>
+								<PaginationItem>
+									<PaginationLink
+										onClick={(e) => {
+											e.preventDefault();
+											onPageChange(1);
+										}}
+									>
+										1
+									</PaginationLink>
+								</PaginationItem>
+								<PaginationItem>
+									<PaginationEllipsis />
+								</PaginationItem>
+							</>
+						)}
+
+						{Array.from({ length: end - start + 1 }, (_, i) => start + i).map(
+							(p) => (
+								<PaginationItem key={p}>
+									<PaginationLink
+										isActive={p === page}
+										onClick={(e) => {
+											e.preventDefault();
+											onPageChange(p);
+										}}
+									>
+										{p}
+									</PaginationLink>
+								</PaginationItem>
+							),
+						)}
+
+						{showEndEllipsis && (
+							<>
+								<PaginationItem>
+									<PaginationEllipsis />
+								</PaginationItem>
+								<PaginationItem>
+									<PaginationLink
+										onClick={(e) => {
+											e.preventDefault();
+											onPageChange(pages);
+										}}
+									>
+										{pages}
+									</PaginationLink>
+								</PaginationItem>
+							</>
+						)}
+
+						<PaginationItem>
+							<PaginationNext
 								onClick={(e) => {
 									e.preventDefault();
-									onPageChange(p);
+									onPageChange(nextPage);
 								}}
-							>
-								{p}
-							</PaginationLink>
+								className={
+									page >= pages ? "pointer-events-none opacity-50" : "cursor-pointer"
+								}
+							/>
 						</PaginationItem>
-					),
-				)}
-
-				{showEndEllipsis && (
-					<>
-						<PaginationItem>
-							<PaginationEllipsis />
-						</PaginationItem>
-						<PaginationItem>
-							<PaginationLink
-								onClick={(e) => {
-									e.preventDefault();
-									onPageChange(pages);
-								}}
-							>
-								{pages}
-							</PaginationLink>
-						</PaginationItem>
-					</>
-				)}
-
-				<PaginationItem>
-					<PaginationNext
-						onClick={(e) => {
-							e.preventDefault();
-							onPageChange(nextPage);
-						}}
-						className={
-							page >= pages ? "pointer-events-none opacity-50" : "cursor-pointer"
-						}
-					/>
-				</PaginationItem>
-			</PaginationContent>
-		</Pagination>
+					</PaginationContent>
+				</Pagination>
+			)}
+		</div>
 	);
 }
 
