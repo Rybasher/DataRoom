@@ -8,23 +8,28 @@ import {
 	ValidationError,
 } from "@/lib/errors.ts";
 import type { FileNode, FileSystemNode, FolderNode } from "@/types/core";
+import type { PaginationParams } from "@/types/pagination";
 import type { SortOption } from "@/types/sort.ts";
+
+export interface GetChildrenResult {
+	nodes: FileSystemNode[];
+	total: number;
+}
 
 export async function getChildren(
 	parentId: string | null,
 	dataRoomId: string,
 	sortBy?: SortOption | null,
-): Promise<FileSystemNode[]> {
+	page?: PaginationParams,
+): Promise<GetChildrenResult> {
 	try {
 		let nodes: FileSystemNode[];
 		if (parentId === null) {
-			// For root level, get all nodes where parentId is null
 			const allNodes = await db.nodes
 				.where({ dataRoomId })
 				.toArray();
 			nodes = allNodes.filter((node) => node.parentId === null);
 		} else {
-			// For specific folder, use compound index
 			nodes = await db.nodes
 				.where({ parentId, dataRoomId })
 				.toArray();
@@ -36,28 +41,43 @@ export async function getChildren(
 
 		switch (sortBy) {
 			case "name-asc":
-				return nodes.sort((a, b) =>
+				nodes.sort((a, b) =>
 					a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
 				);
+				break;
 			case "name-desc":
-				return nodes.sort((a, b) =>
+				nodes.sort((a, b) =>
 					b.name.localeCompare(a.name, undefined, { sensitivity: "base" }),
 				);
+				break;
 			case "createdAt-asc":
-				return nodes.sort((a, b) => a.createdAt - b.createdAt);
+				nodes.sort((a, b) => a.createdAt - b.createdAt);
+				break;
 			case "createdAt-desc":
-				return nodes.sort((a, b) => b.createdAt - a.createdAt);
+				nodes.sort((a, b) => b.createdAt - a.createdAt);
+				break;
 			case "updatedAt-asc":
-				return nodes.sort((a, b) => a.updatedAt - b.updatedAt);
+				nodes.sort((a, b) => a.updatedAt - b.updatedAt);
+				break;
 			case "updatedAt-desc":
-				return nodes.sort((a, b) => b.updatedAt - a.updatedAt);
+				nodes.sort((a, b) => b.updatedAt - a.updatedAt);
+				break;
 			case "size-asc":
-				return nodes.sort((a, b) => getSize(a) - getSize(b));
+				nodes.sort((a, b) => getSize(a) - getSize(b));
+				break;
 			case "size-desc":
-				return nodes.sort((a, b) => getSize(b) - getSize(a));
+				nodes.sort((a, b) => getSize(b) - getSize(a));
+				break;
 			default:
-				return nodes.sort((a, b) => a.createdAt - b.createdAt);
+				nodes.sort((a, b) => a.createdAt - b.createdAt);
 		}
+
+		const total = nodes.length;
+		if (page) {
+			const { limit, offset } = page;
+			nodes = nodes.slice(offset, offset + limit);
+		}
+		return { nodes, total };
 	} catch (error) {
 		throw new DatabaseError(
 			`Failed to fetch children of ${parentId ?? "root"}`,
@@ -94,9 +114,9 @@ export async function checkNameExists(
 	excludeId?: string,
 ): Promise<boolean> {
 	try {
-		const children = await getChildren(parentId, dataRoomId);
+		const { nodes } = await getChildren(parentId, dataRoomId);
 		const nameLower = name.toLowerCase();
-		return children.some(
+		return nodes.some(
 			(node) => node.name.toLowerCase() === nameLower && node.id !== excludeId,
 		);
 	} catch (error) {

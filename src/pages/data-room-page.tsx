@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Trash2Icon, XIcon } from "lucide-react";
-import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { parseAsInteger, parseAsStringLiteral, useQueryStates } from "nuqs";
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { DEFAULT_PAGE_SIZE } from "@/constants/pagination";
 import BulkDeleteNodes from "@/features/data-room/components/bulk-delete-nodes";
 import DataRoomDialogs from "@/features/data-room/components/data-room-dialogs";
 import DataRoomHeader from "@/features/data-room/components/data-room-header";
@@ -13,9 +14,11 @@ import { useDataRoom } from "@/features/data-room/hooks";
 import FileDropZone from "@/features/file/components/file-drop-zone";
 import FilePreview from "@/features/file/components/file-preview";
 import NodeList from "@/features/file-system/components/node-list";
+import NodeListPagination from "@/features/file-system/components/node-list-pagination";
 import NodeListSkeleton from "@/features/file-system/components/node-list-skeleton";
 import { useMoveNode, useNodes } from "@/features/file-system/hooks";
 import { useFolderPath } from "@/features/folder/hooks";
+import { pageToOffset, totalPages } from "@/lib/utils/pagination";
 import type { FileNode, FolderNode } from "@/types/core";
 import { SORT_OPTIONS, type SortOption } from "@/types/sort";
 
@@ -42,27 +45,53 @@ export default function DataRoomPage() {
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 	const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
-	const [sortBy, setSortBy] = useQueryState(
-		"sortBy",
-		parseAsStringLiteral(SORT_OPTIONS),
-	);
+	const [{ sortBy, page, limit }, setQueryStates] = useQueryStates({
+		sortBy: parseAsStringLiteral(SORT_OPTIONS),
+		page: parseAsInteger.withDefault(1),
+		limit: parseAsInteger.withDefault(DEFAULT_PAGE_SIZE),
+	});
+
+	const pagination = {
+		limit,
+		offset: pageToOffset(page, limit),
+	};
 
 	const { data: dataRoom } = useDataRoom(dataRoomId);
 	const { mutate: moveNodeMutate } = useMoveNode();
-	const { data: nodes = [], isLoading } = useNodes({
+	const { data: nodesData, isLoading } = useNodes({
 		parentId: currentFolderId,
 		dataRoomId: dataRoomId!,
 		sortBy,
+		page: pagination,
 	});
+
+	const nodes = useMemo(
+		() => nodesData?.nodes ?? [],
+		[nodesData],
+	);
+	const total = useMemo(
+		() => nodesData?.total ?? 0,
+		[nodesData],
+	);
 	const { data: breadcrumbPath = [] } = useFolderPath(currentFolderId);
 
-	const selectedNodes = nodes.filter((n) => selectedIds.has(n.id));
+	// After delete: if current page is empty and there is a previous page, go back
+	useEffect(() => {
+		if (nodes.length === 0 && total > 0 && page > 1) {
+			void setQueryStates({ page: page - 1 });
+		}
+	}, [nodes.length, total, page, setQueryStates]);
 
-	// Clear selection when navigating to another folder
+	const selectedNodes = useMemo(
+		() => nodes.filter((n) => selectedIds.has(n.id)),
+		[nodes, selectedIds],
+	);
+
+	// Clear selection when navigating (folder or pagination page)
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect
 		setSelectedIds(new Set());
-	}, [currentFolderId]);
+	}, [currentFolderId, page]);
 
 	const handleToggleNode = useCallback((id: string) => {
 		setSelectedIds((prev) => {
@@ -101,10 +130,22 @@ export default function DataRoomPage() {
 	);
 
 	const handleSortChange = useCallback(
-		async (option: SortOption) => {
-			await setSortBy(option === sortBy ? null : option);
+		(option: SortOption) => {
+			void setQueryStates({
+				sortBy: option === sortBy ? null : option,
+				page: 1,
+			});
 		},
-		[sortBy, setSortBy],
+		[sortBy, setQueryStates],
+	);
+
+	const handlePageChange = useCallback(
+		(nextPage: number) => {
+			void setQueryStates({
+				page: Math.max(1, Math.min(nextPage, totalPages(total, limit))),
+			});
+		},
+		[total, limit, setQueryStates],
 	);
 
 	const handleRenameClick = useCallback(
@@ -207,21 +248,29 @@ export default function DataRoomPage() {
 						{isLoading ? (
 							<NodeListSkeleton />
 						) : (
-							<NodeList
-								nodes={nodes}
-								sortBy={sortBy}
-								onSortChange={handleSortChange}
-								selectedIds={selectedIds}
-								onToggleNode={handleToggleNode}
-								onSelectAll={handleSelectAll}
-								onFolderClick={handleNavigate}
-								onFileClick={handleFileClick}
-								onRenameClick={handleRenameClick}
-								onDeleteClick={handleDeleteFolderClick}
-								onRenameFileClick={handleRenameFileClick}
-								onDeleteFileClick={handleDeleteFileClick}
-								onMoveNode={handleMoveNode}
-							/>
+							<>
+								<NodeList
+									nodes={nodes}
+									sortBy={sortBy}
+									onSortChange={handleSortChange}
+									selectedIds={selectedIds}
+									onToggleNode={handleToggleNode}
+									onSelectAll={handleSelectAll}
+									onFolderClick={handleNavigate}
+									onFileClick={handleFileClick}
+									onRenameClick={handleRenameClick}
+									onDeleteClick={handleDeleteFolderClick}
+									onRenameFileClick={handleRenameFileClick}
+									onDeleteFileClick={handleDeleteFileClick}
+									onMoveNode={handleMoveNode}
+								/>
+								<NodeListPagination
+									page={page}
+									limit={limit}
+									total={total}
+									onPageChange={handlePageChange}
+								/>
+							</>
 						)}
 					</div>
 				</ScrollArea>

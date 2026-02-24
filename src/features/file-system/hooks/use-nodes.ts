@@ -1,19 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { nodeQueries } from "@/features/file-system/queries";
+import type { PaginationParams } from "@/types/pagination";
 import type { SortOption } from "@/types/sort";
 
-interface Props {
+export interface UseNodesParams {
 	parentId: string | null;
 	dataRoomId: string;
 	sortBy?: SortOption | null;
+	page?: PaginationParams;
 }
 
-/**
- * Fetch all children in one DB query.
- * `select` keeps the raw cache intact while returning a folders-first flat list
- * to the component — zero extra round-trips, no duplicate fetching.
- */
-export function useNodes({ parentId, dataRoomId, sortBy }: Props) {
-	return useQuery(nodeQueries.children(parentId, dataRoomId, sortBy));
+export function useNodes({ parentId, dataRoomId, sortBy, page }: UseNodesParams) {
+	return useQuery({
+		...nodeQueries.children(parentId, dataRoomId, sortBy, page),
+		placeholderData: keepPreviousData,
+	});
 }

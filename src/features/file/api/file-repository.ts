@@ -25,7 +25,7 @@ export async function uploadFile(
 	validateFile(file);
 
 	// Single DB call to get all siblings, then resolve name conflict client-side
-	const siblings = await getChildren(parentId, dataRoomId);
+	const { nodes: siblings } = await getChildren(parentId, dataRoomId);
 	const existingNames = siblings.map((n) => n.name);
 	const name = resolveNameConflict(file.name, existingNames);
 
@@ -72,7 +72,7 @@ export async function getFiles(
 	sortBy?: SortOption | null,
 ): Promise<FileNode[]> {
 	try {
-		const nodes = await getChildren(parentId, dataRoomId, sortBy);
+		const { nodes } = await getChildren(parentId, dataRoomId, sortBy);
 		return nodes.filter((node): node is FileNode => node.type === "file");
 	} catch (error) {
 		throw new DatabaseError("Failed to fetch files", error as Error);

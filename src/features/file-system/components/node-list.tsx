@@ -145,6 +145,7 @@ const NodeList = memo(function NodeList({
 	onDeleteFileClick,
 	onMoveNode,
 }: NodeListProps) {
+	console.log("sortBy", sortBy);
 	const allSelected =
 		nodes.length > 0 && nodes.every((n) => selectedIds.has(n.id));
 	const someSelected = nodes.some((n) => selectedIds.has(n.id));

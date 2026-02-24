@@ -13,7 +13,7 @@ export async function getFolders(
 	dataRoomId: string,
 	sortBy?: SortOption | null,
 ): Promise<FolderNode[]> {
-	const nodes = await getChildren(parentId, dataRoomId, sortBy);
+	const { nodes } = await getChildren(parentId, dataRoomId, sortBy);
 	return nodes.filter((node) => node.type === "folder");
 }
 
