@@ -222,9 +222,9 @@ export default function DataRoomPage() {
 				sortBy={sortBy}
 				onSortChange={handleSortChange}
 			/>
-			<div className="flex-1 min-h-0">
-				<ScrollArea className="h-full">
-					<div className="p-6 space-y-3">
+			<div className="flex flex-1 min-h-0 flex-col">
+				<ScrollArea className="flex-1 min-h-0">
+					<div className="space-y-3 p-6">
 						{selectedIds.size > 0 && (
 							<div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/50 px-4 py-2">
 								<span className="text-sm font-medium">
@@ -256,33 +256,35 @@ export default function DataRoomPage() {
 						{isLoading ? (
 							<NodeListSkeleton />
 						) : (
-							<>
-								<NodeList
-									nodes={nodes}
-									sortBy={sortBy}
-									onSortChange={handleSortChange}
-									selectedIds={selectedIds}
-									onToggleNode={handleToggleNode}
-									onSelectAll={handleSelectAll}
-									onFolderClick={handleNavigate}
-									onFileClick={handleFileClick}
-									onRenameClick={handleRenameClick}
-									onDeleteClick={handleDeleteFolderClick}
-									onRenameFileClick={handleRenameFileClick}
-									onDeleteFileClick={handleDeleteFileClick}
-									onMoveNode={handleMoveNode}
-								/>
-								<NodeListPagination
-									page={page}
-									limit={limit}
-									total={total}
-									onPageChange={handlePageChange}
-									onLimitChange={handleLimitChange}
-								/>
-							</>
+							<NodeList
+								nodes={nodes}
+								sortBy={sortBy}
+								onSortChange={handleSortChange}
+								selectedIds={selectedIds}
+								onToggleNode={handleToggleNode}
+								onSelectAll={handleSelectAll}
+								onFolderClick={handleNavigate}
+								onFileClick={handleFileClick}
+								onRenameClick={handleRenameClick}
+								onDeleteClick={handleDeleteFolderClick}
+								onRenameFileClick={handleRenameFileClick}
+								onDeleteFileClick={handleDeleteFileClick}
+								onMoveNode={handleMoveNode}
+							/>
 						)}
 					</div>
 				</ScrollArea>
+				{!isLoading && total > 0 && (
+					<div className="shrink-0 border-t bg-background px-6 py-3">
+						<NodeListPagination
+							page={page}
+							limit={limit}
+							total={total}
+							onPageChange={handlePageChange}
+							onLimitChange={handleLimitChange}
+						/>
+					</div>
+				)}
 			</div>
 
 			<DataRoomDialogs
